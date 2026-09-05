@@ -26,7 +26,7 @@
     html, body {
       width: 100vw;
       height: 100vh;
-      height: 100dvh; /* Adapts dynamically to mobile browser address bars */
+      height: 100dvh; /* Dynamic viewport height fix for mobile browsers */
       margin: 0;
       padding: 0;
       overflow: hidden;
@@ -239,7 +239,7 @@
       width: 100%;
       flex: 1;
       padding: 10px;
-      min-height: 0; /* Ensures flex container constrains child size */
+      min-height: 0;
     }
 
     .pan-wrapper {
@@ -259,7 +259,6 @@
       height: min(65dvh, 44vw);
     }
 
-    /* Fixed Aspect Ratio Triples Layout */
     .triple-layout {
       position: relative;
       width: 100%;
@@ -279,7 +278,6 @@
     .triple-layout .pan-wrapper:nth-child(2) { transform: translate(0vmin, -15vmin); }
     .triple-layout .pan-wrapper:nth-child(3) { transform: translate(25vmin, 9vmin); }
 
-    /* Fixed Aspect Ratio Bass Layout */
     .bass-layout {
       position: relative;
       width: 100%;
@@ -295,13 +293,12 @@
       height: 20vmin;
     }
 
-    /* Radial Offsets for Clearance */
-    .bass-layout .pan-wrapper:nth-child(1) { transform: translate(-22vmin, -2vmin); }  /* E2, B1, B2 */
-    .bass-layout .pan-wrapper:nth-child(2) { transform: translate(-11.5vmin, -20.5vmin); }   /* G2, C3, C2 */
-    .bass-layout .pan-wrapper:nth-child(3) { transform: translate(11.5vmin, -20.5vmin); }    /* F#2, C#3, C#2 */
-    .bass-layout .pan-wrapper:nth-child(4) { transform: translate(22vmin, -2vmin); }   /* D2, A2, D3 */
-    .bass-layout .pan-wrapper:nth-child(5) { transform: translate(-11.5vmin, 16.5vmin); }    /* Bb2, Bb1, F2 */
-    .bass-layout .pan-wrapper:nth-child(6) { transform: translate(11.5vmin, 16.5vmin); }     /* Eb2, Eb3, Ab2 */
+    .bass-layout .pan-wrapper:nth-child(1) { transform: translate(-22vmin, -2vmin); }
+    .bass-layout .pan-wrapper:nth-child(2) { transform: translate(-11.5vmin, -20.5vmin); }
+    .bass-layout .pan-wrapper:nth-child(3) { transform: translate(11.5vmin, -20.5vmin); }
+    .bass-layout .pan-wrapper:nth-child(4) { transform: translate(22vmin, -2vmin); }
+    .bass-layout .pan-wrapper:nth-child(5) { transform: translate(-11.5vmin, 16.5vmin); }
+    .bass-layout .pan-wrapper:nth-child(6) { transform: translate(11.5vmin, 16.5vmin); }
 
     .steel-pan {
       position: relative;
@@ -409,7 +406,6 @@
   <aside class="sidebar collapsed" id="sidebar">
     <div class="sidebar-header">Settings</div>
     <div class="sidebar-content">
-      
       <div class="setting-item">
         <span>Drum Type</span>
         <div class="btn-group">
@@ -427,7 +423,6 @@
           <span class="slider"></span>
         </label>
       </div>
-
     </div>
   </aside>
 
@@ -462,7 +457,7 @@
       { name: 'D4',  freq: 293.66, ring: 'ring-outer', radius: 37.5, angle: 30,  rotate: 30 },
       { name: 'A4',  freq: 440.00, ring: 'ring-outer', radius: 37.5, angle: 0,   rotate: 0 },
       { name: 'E4',  freq: 329.63, ring: 'ring-outer', radius: 37.5, angle: 330, rotate: -30 },
-      { name: 'B4',  freq: 493.88, ring: 'ring-outer', radius: 300, angle: 300, rotate: -60 },
+      { name: 'B4',  freq: 493.88, ring: 'ring-outer', radius: 37.5, angle: 300, rotate: -60 },
       { name: 'F♯4', freq: 369.99, ring: 'ring-outer', radius: 37.5, angle: 270, rotate: 90 },
       { name: 'C♯4', freq: 277.18, ring: 'ring-outer', radius: 37.5, angle: 240, rotate: 60 },
       { name: 'A♭4', freq: 415.30, ring: 'ring-outer', radius: 37.5, angle: 210, rotate: 30 },
@@ -570,39 +565,32 @@
       { name: 'B4',  freq: 493.88, x: 50, y: 57, w: 16, h: 11, rot: 10,  fontSize: 'min(1.1dvh, 1.2vw)' }
     ];
 
-    /* 6-Bass Layout Data */
     const bassPansNotes = [
-      // Pan 1 (Mid Left)
       [
         { name: 'E2', freq: 82.41, startA: 120, endA: 240, lblR: 30, lblA: 180 },
         { name: 'B1', freq: 61.74, startA: 0, endA: 120, lblR: 30, lblA: 60 },
         { name: 'B2', freq: 123.47, startA: -120, endA: 0, lblR: 30, lblA: -60 }
       ],
-      // Pan 2 (Top Left)
       [
         { name: 'G2', freq: 98.00, startA: -180, endA: -60, lblR: 30, lblA: -120 },
         { name: 'C3', freq: 130.81, startA: -60, endA: 60, lblR: 30, lblA: 0 },
         { name: 'C2', freq: 65.41, startA: 60, endA: 180, lblR: 30, lblA: 120 }
       ],
-      // Pan 3 (Top Right)
       [
         { name: 'F♯2', freq: 92.50, startA: -120, endA: 0, lblR: 30, lblA: -60 },
         { name: 'C♯3', freq: 138.59, startA: 0, endA: 120, lblR: 30, lblA: 60 },
         { name: 'C♯2', freq: 69.30, startA: 120, endA: 240, lblR: 30, lblA: 180 }
       ],
-      // Pan 4 (Mid Right) - Rotated CCW so D3/D2 border is horizontal (0 degrees)
       [
         { name: 'D2', freq: 73.42, startA: -180, endA: -60, lblR: 30, lblA: -120 },
         { name: 'A2', freq: 110.00, startA: -60, endA: 60, lblR: 30, lblA: 0 },
         { name: 'D3', freq: 146.83, startA: 60, endA: 180, lblR: 30, lblA: 120 }
       ],
-      // Pan 5 (Bottom Left) - Rotated counterclockwise 20 degrees (-20 deg applied to all angles)
       [
         { name: 'B♭2', freq: 116.54, startA: -170, endA: -50, lblR: 30, lblA: -110 },
         { name: 'B♭1', freq: 58.27, startA: -50, endA: 70, lblR: 30, lblA: 10 },
         { name: 'F2', freq: 87.31, startA: 70, endA: 190, lblR: 30, lblA: 130 }
       ],
-      // Pan 6 (Bottom Right)
       [
         { name: 'E♭2', freq: 77.78, startA: -120, endA: 0, lblR: 30, lblA: -60 },
         { name: 'A♭2', freq: 103.83, startA: 0, endA: 120, lblR: 30, lblA: 60 },
