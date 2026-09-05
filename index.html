@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Steel Pan</title>
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --pan-border: #334155;
+      --pan-surface: #1e293b;
+      --note-bg: #334155;
+      --note-hover: #475569;
+      --note-active: #0284c7;
+      --text-color: #f8fafc;
+      --sidebar-bg: #1e293b;
+      --sidebar-border: #334155;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: var(--bg-color);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      touch-action: none;
+    }
+
+    /* Collapsible Sidebar */
+    .sidebar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 260px;
+      background-color: var(--sidebar-bg);
+      border-right: 1px solid var(--sidebar-border);
+      z-index: 100;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 4px 0 20px rgba(0, 0, 0, 0.4);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar.collapsed {
+      transform: translateX(-100%);
+    }
+
+    .sidebar-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--sidebar-border);
+      color: #f1f5f9;
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+
+    .sidebar-content {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .setting-item {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      color: #cbd5e1;
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+
+    .setting-item.row {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .btn-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      width: 100%;
+    }
+
+    .drum-btn {
+      background-color: #0f172a;
+      color: #cbd5e1;
+      border: 1px solid var(--sidebar-border);
+      border-radius: 6px;
+      padding: 8px 4px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+      text-align: center;
+    }
+
+    .drum-btn:hover {
+      background-color: #334155;
+      color: #f8fafc;
+    }
+
+    .drum-btn.active {
+      background-color: #0284c7;
+      color: #ffffff;
+      border-color: #38bdf8;
+    }
+
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #475569;
+      transition: .2s;
+      border-radius: 24px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .2s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: #0284c7;
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+
+    .sidebar-toggle-btn {
+      position: absolute;
+      top: 16px;
+      left: 260px;
+      z-index: 101;
+      background-color: var(--sidebar-bg);
+      border: 1px solid var(--sidebar-border);
+      border-left: none;
+      color: #cbd5e1;
+      padding: 0 10px;
+      height: 42px;
+      border-radius: 0 8px 8px 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s, color 0.2s;
+      box-shadow: 4px 0 10px rgba(0, 0, 0, 0.2);
+    }
+
+    .sidebar.collapsed + .sidebar-toggle-btn {
+      left: 0;
+    }
+
+    .sidebar-toggle-btn:hover {
+      background-color: #334155;
+      color: #f8fafc;
+    }
+
+    .sidebar-toggle-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .sidebar-toggle-btn .arrow-icon {
+      transition: transform 0.3s;
+    }
+
+    .sidebar.collapsed + .sidebar-toggle-btn .arrow-icon {
+      transform: rotate(180deg);
+    }
+
+    .main-container {
+      flex: 1;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+    }
+
+    .header {
+      width: 100%;
+      padding-top: 16px;
+      text-align: center;
+      z-index: 10;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 2.2rem;
+      color: #f1f5f9;
+      letter-spacing: -0.025em;
+    }
+
+    .pan-stage {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      width: 100%;
+      flex: 1;
+      padding: 10px;
+    }
+
+    .pan-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .single-layout .pan-wrapper {
+      width: min(78vh, 85vw);
+      height: min(78vh, 85vw);
+    }
+
+    .dual-layout .pan-wrapper {
+      width: min(72vh, 44vw);
+      height: min(72vh, 44vw);
+    }
+
+    .triple-layout {
+      gap: 0px;
+      align-items: center;
+      justify-content: center;
+      width: 90vw;
+    }
+
+    .triple-layout .pan-wrapper {
+      width: min(45vh, 24vw); 
+      height: min(45vh, 24vw); 
+      flex-shrink: 0;
+    }
+
+    .triple-layout .pan-wrapper:nth-child(1),
+    .triple-layout .pan-wrapper:nth-child(3) {
+      transform: translateY(90px);
+    }
+
+    .triple-layout .pan-wrapper:nth-child(2) {
+      transform: translateY(-150px);
+    }
+
+    /* Fixed Aspect Ratio Bass Layout */
+    .bass-layout {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .bass-layout .pan-wrapper {
+      position: absolute;
+      width: 22vmin;
+      height: 22vmin;
+    }
+
+    /* Radial Offsets for Clearance */
+    .bass-layout .pan-wrapper:nth-child(1) { transform: translate(-23.5vmin, -2.5vmin); }  /* E2, B1, B2 */
+    .bass-layout .pan-wrapper:nth-child(2) { transform: translate(-12.5vmin, -22vmin); }   /* G2, C3, C2 */
+    .bass-layout .pan-wrapper:nth-child(3) { transform: translate(12.5vmin, -22vmin); }    /* F#2, C#3, C#2 */
+    .bass-layout .pan-wrapper:nth-child(4) { transform: translate(23.5vmin, -2.5vmin); }   /* D2, A2, D3 */
+    .bass-layout .pan-wrapper:nth-child(5) { transform: translate(-12.5vmin, 17vmin); }    /* Bb2, Bb1, F2 */
+    .bass-layout .pan-wrapper:nth-child(6) { transform: translate(12.5vmin, 17vmin); }     /* Eb2, Eb3, Ab2 */
+
+    .steel-pan {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #334155, #0f172a 70%);
+      border: 8px solid #475569;
+      box-shadow: inset 0 0 35px rgba(0,0,0,0.8), 0 12px 30px rgba(0,0,0,0.5);
+      overflow: hidden;
+    }
+
+    .note-pad {
+      position: absolute;
+      background: radial-gradient(circle, #334155 0%, #1e293b 100%);
+      border: 2px solid #64748b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-color);
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: inset 0 2px 4px rgba(255,255,255,0.1), 0 4px 8px rgba(0,0,0,0.3);
+      transition: background-color 0.05s ease, border-color 0.1s ease;
+      border-radius: 50%;
+      z-index: 2;
+    }
+
+    .note-slice {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .note-slice path {
+      fill: #1e293b;
+      stroke: #64748b;
+      stroke-width: 2;
+      cursor: pointer;
+      pointer-events: fill;
+      transition: fill 0.05s ease, stroke 0.1s ease;
+    }
+
+    .note-slice text {
+      fill: var(--text-color);
+      font-weight: 700;
+      pointer-events: none;
+    }
+
+    .note-pad:hover, .note-slice path:hover {
+      background: #475569;
+      fill: #334155;
+      border-color: #38bdf8;
+      stroke: #38bdf8;
+    }
+
+    .note-pad.active, .note-slice.active path {
+      background: var(--note-active) !important;
+      fill: var(--note-active) !important;
+      border-color: #38bdf8 !important;
+      stroke: #38bdf8 !important;
+      box-shadow: 0 0 18px #0284c7;
+    }
+
+    .note-label {
+      pointer-events: none;
+    }
+
+    .ring-outer { width: 17%; height: 14.5%; font-size: min(1.8vh, 2.2vw); }
+    .ring-mid   { width: 10.5%; height: 6.8%; font-size: min(1.3vh, 1.6vw); }
+    .ring-inner { width: 6.5%; height: 6.5%; font-size: min(1.1vh, 1.3vw); }
+
+    .footer-note {
+      padding-bottom: 8px;
+      color: #94a3b8;
+      font-size: 0.95rem;
+      text-align: center;
+      width: 100%;
+      z-index: 10;
+    }
+
+    #layoutLabel {
+      position: absolute;
+      top: 48%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      font-size: 2.5vmin;
+      font-weight: 800;
+      color: #334155;
+      text-transform: uppercase;
+      letter-spacing: 0.25em;
+      pointer-events: none;
+      z-index: 0;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <aside class="sidebar collapsed" id="sidebar">
+    <div class="sidebar-header">Settings</div>
+    <div class="sidebar-content">
+      
+      <div class="setting-item">
+        <span>Drum Type</span>
+        <div class="btn-group">
+          <button class="drum-btn active" data-drum="lead">Lead</button>
+          <button class="drum-btn" data-drum="doubles">Doubles</button>
+          <button class="drum-btn" data-drum="triples">Triples</button>
+          <button class="drum-btn" data-drum="bass">Bass</button>
+        </div>
+      </div>
+
+      <div class="setting-item row">
+        <span>Octave #</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="toggleOctaves" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+    </div>
+  </aside>
+
+  <button class="sidebar-toggle-btn" id="sidebarToggle" aria-label="Toggle Settings">
+    <svg class="gear-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"></circle>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+    </svg>
+    <svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="15 18 9 12 15 6"></polyline>
+    </svg>
+  </button>
+
+  <div class="main-container">
+    <div class="header">
+      <h1 id="drumTitle">Lead Steel Pan</h1>
+    </div>
+
+    <div class="pan-stage single-layout" id="panStage"></div>
+
+    <div class="footer-note">
+      Click or tap notes to play
+    </div>
+    
+    <div id="layoutLabel">Bass</div>
+  </div>
+
+  <script>
+    const leadNotes = [
+      { name: 'C4',  freq: 261.63, ring: 'ring-outer', radius: 37.5, angle: 90,  rotate: 90 },
+      { name: 'G4',  freq: 392.00, ring: 'ring-outer', radius: 37.5, angle: 60,  rotate: 60 },
+      { name: 'D4',  freq: 293.66, ring: 'ring-outer', radius: 37.5, angle: 30,  rotate: 30 },
+      { name: 'A4',  freq: 440.00, ring: 'ring-outer', radius: 37.5, angle: 0,   rotate: 0 },
+      { name: 'E4',  freq: 329.63, ring: 'ring-outer', radius: 37.5, angle: 330, rotate: -30 },
+      { name: 'B4',  freq: 493.88, ring: 'ring-outer', radius: 37.5, angle: 300, rotate: -60 },
+      { name: 'F♯4', freq: 369.99, ring: 'ring-outer', radius: 37.5, angle: 270, rotate: 90 },
+      { name: 'C♯4', freq: 277.18, ring: 'ring-outer', radius: 37.5, angle: 240, rotate: 60 },
+      { name: 'A♭4', freq: 415.30, ring: 'ring-outer', radius: 37.5, angle: 210, rotate: 30 },
+      { name: 'E♭4', freq: 311.13, ring: 'ring-outer', radius: 37.5, angle: 180, rotate: 0 },
+      { name: 'B♭4', freq: 466.16, ring: 'ring-outer', radius: 37.5, angle: 150, rotate: -30 },
+      { name: 'F4',  freq: 349.23, ring: 'ring-outer', radius: 37.5, angle: 120, rotate: -60 },
+
+      { name: 'C5',  freq: 523.25, ring: 'ring-mid',   radius: 20.5, angle: 90,  rotate: 90 },
+      { name: 'G5',  freq: 783.99, ring: 'ring-mid',   radius: 20.5, angle: 60,  rotate: 60 },
+      { name: 'D5',  freq: 587.33, ring: 'ring-mid',   radius: 20.5, angle: 30,  rotate: 30 },
+      { name: 'A5',  freq: 880.00, ring: 'ring-mid',   radius: 20.5, angle: 0,   rotate: 0 },
+      { name: 'E5',  freq: 659.25, ring: 'ring-mid',   radius: 20.5, angle: 330, rotate: -30 },
+      { name: 'B5',  freq: 987.77, ring: 'ring-mid',   radius: 20.5, angle: 300, rotate: -60 },
+      { name: 'F♯5', freq: 739.99, ring: 'ring-mid',   radius: 20.5, angle: 270, rotate: 90 },
+      { name: 'C♯5', freq: 554.37, ring: 'ring-mid',   radius: 20.5, angle: 240, rotate: 60 },
+      { name: 'A♭5', freq: 830.61, ring: 'ring-mid',   radius: 20.5, angle: 210, rotate: 30 },
+      { name: 'E♭5', freq: 622.25, ring: 'ring-mid',   radius: 20.5, angle: 180, rotate: 0 },
+      { name: 'B♭5', freq: 932.33, ring: 'ring-mid',   radius: 20.5, angle: 150, rotate: -30 },
+      { name: 'F5',  freq: 698.46, ring: 'ring-mid',   radius: 20.5, angle: 120, rotate: -60 },
+
+      { name: 'C6',  freq: 1046.50, ring: 'ring-inner', radius: 9.8, angle: 90,  rotate: 0 },
+      { name: 'D6',  freq: 1174.66, ring: 'ring-inner', radius: 9.8, angle: 30,  rotate: 0 },
+      { name: 'E6',  freq: 1318.51, ring: 'ring-inner', radius: 9.8, angle: 330, rotate: 0 },
+      { name: 'C♯6', freq: 1108.73, ring: 'ring-inner', radius: 9.8, angle: 240, rotate: 0 },
+      { name: 'E♭6', freq: 1244.51, ring: 'ring-inner', radius: 9.8, angle: 180, rotate: 0 }
+    ];
+
+    const doublesLeftNotes = [
+      { name: 'A♭3', freq: 207.65, x: 37, y: 22, w: 28, h: 22, rot: -28, fontSize: 'min(1.7vh, 1.8vw)' },
+      { name: 'C4',  freq: 261.63, x: 67, y: 22, w: 24, h: 16, rot: 25,  fontSize: 'min(1.5vh, 1.6vw)' },
+      { name: 'E4',  freq: 329.63, x: 83, y: 48, w: 21, h: 16.5, rot: -75, fontSize: 'min(1.7vh, 1.8vw)' },
+      { name: 'B♭3', freq: 233.08, x: 74, y: 73, w: 28, h: 20, rot: -60, fontSize: 'min(1.7vh, 1.8vw)' },
+      { name: 'F♯3', freq: 185.00, x: 42, y: 83, w: 32, h: 22, rot: 15,  fontSize: 'min(1.7vh, 1.8vw)' },
+      { name: 'F♯4', freq: 369.99, x: 19, y: 67, w: 20, h: 14, rot: 30,  fontSize: 'min(1.4vh, 1.5vw)' },
+      { name: 'D4',  freq: 293.66, x: 15, y: 44, w: 20, h: 25, rot: -15, fontSize: 'min(1.5vh, 1.6vw)' },
+
+      { name: 'A♭4', freq: 415.30, x: 45, y: 41, w: 15, h: 11, rot: -25, fontSize: 'min(1.2vh, 1.3vw)' },
+      { name: 'C5',  freq: 523.25, x: 59, y: 38, w: 12, h: 10, rot: 25,  fontSize: 'min(1.1vh, 1.2vw)' },
+      { name: 'E5',  freq: 659.25, x: 66, y: 50, w: 12, h: 10, rot: 70,  fontSize: 'min(1.1vh, 1.2vw)' },
+      { name: 'B♭4', freq: 466.16, x: 61, y: 64, w: 14, h: 10, rot: -50, fontSize: 'min(1.2vh, 1.3vw)' },
+      { name: 'F♯5', freq: 739.99, x: 38, y: 64, w: 11, h: 9,  rot: 20,  fontSize: 'min(1.0vh, 1.1vw)' },
+      { name: 'D5',  freq: 587.33, x: 32, y: 51, w: 10, h: 14, rot: 70,  fontSize: 'min(1.0vh, 1.1vw)' },
+
+      { name: 'A♭5', freq: 830.61, x: 49, y: 54, w: 9,  h: 7,  rot: -25, fontSize: 'min(0.9vh, 1.0vw)' }
+    ];
+
+    const doublesRightNotes = [
+      { name: 'G3',  freq: 196.00, x: 50, y: 19, w: 28, h: 22, rot: 0,   fontSize: 'min(1.7vh, 1.8vw)' },
+      { name: 'G4',  freq: 392.00, x: 79, y: 28, w: 22, h: 16, rot: -85, fontSize: 'min(1.5vh, 1.6vw)' },
+      { name: 'E♭4', freq: 311.13, x: 86, y: 51, w: 18, h: 28, rot: 10,  fontSize: 'min(1.5vh, 1.6vw)' },
+      { name: 'B3',  freq: 246.94, x: 74, y: 76, w: 28, h: 20, rot: -30, fontSize: 'min(1.7vh, 1.8vw)' },
+      { name: 'F4',  freq: 349.23, x: 48, y: 84, w: 18, h: 24, rot: 0,   fontSize: 'min(1.5vh, 1.6vw)' },
+      { name: 'A3',  freq: 220.00, x: 23, y: 68, w: 28, h: 20, rot: 60,  fontSize: 'min(1.7vh, 1.8vw)' },
+      { name: 'C♯4', freq: 277.18, x: 18, y: 40, w: 20, h: 26, rot: 25,  fontSize: 'min(1.5vh, 1.6vw)' },
+
+      { name: 'G5',  freq: 783.99, x: 63, y: 33, w: 11, h: 9,  rot: -30, fontSize: 'min(1.0vh, 1.1vw)' },
+      { name: 'E♭5', freq: 622.25, x: 68, y: 48, w: 10, h: 14, rot: 25,  fontSize: 'min(0.9vh, 1.0vw)' },
+      { name: 'B4',  freq: 493.88, x: 64, y: 61, w: 15, h: 11, rot: -20, fontSize: 'min(1.2vh, 1.3vw)' },
+      { name: 'F5',  freq: 698.46, x: 49, y: 66, w: 10, h: 12, rot: -20, fontSize: 'min(1.0vh, 1.1vw)' },
+      { name: 'A4',  freq: 440.00, x: 38, y: 58, w: 14, h: 10, rot: 45,  fontSize: 'min(1.2vh, 1.3vw)' },
+      { name: 'C♯5', freq: 554.37, x: 36, y: 42, w: 15, h: 10, rot: 115, fontSize: 'min(1.1vh, 1.2vw)' },
+
+      { name: 'A5',  freq: 880.00, x: 50, y: 50, w: 9,  h: 7,  rot: -10, fontSize: 'min(0.9vh, 1.0vw)' }
+    ];
+
+    const triplesLeftOuter = [
+      { name: 'B♭3', freq: 233.08, startA: -126, endA: -54,  lblR: 36, lblA: -90, fontSize: 'min(1.8vh, 1.8vw)' },
+      { name: 'C♯4', freq: 277.18, startA: -54,  endA: 18,   lblR: 36, lblA: -18, fontSize: 'min(1.8vh, 1.8vw)' },
+      { name: 'C♯3', freq: 138.59, startA: 18,   endA: 90,   lblR: 36, lblA: 54,  fontSize: 'min(1.8vh, 1.8vw)' },
+      { name: 'E3',  freq: 164.81, startA: 90,   endA: 162,  lblR: 36, lblA: 126, fontSize: 'min(1.8vh, 1.8vw)' },
+      { name: 'G3',  freq: 196.00, startA: 162,  endA: 234,  lblR: 36, lblA: 198, fontSize: 'min(1.8vh, 1.8vw)' }
+    ];
+    
+    const triplesLeftInner = [
+      { name: 'B♭4', freq: 466.16, x: 57, y: 39, w: 15, h: 11, rot: 25,  fontSize: 'min(1.1vh, 1.2vw)' },
+      { name: 'G4',  freq: 392.00, x: 39, y: 46, w: 18, h: 14, rot: -85, fontSize: 'min(1.2vh, 1.3vw)' },
+      { name: 'E4',  freq: 329.63, x: 53, y: 60, w: 19, h: 14, rot: -30, fontSize: 'min(1.2vh, 1.3vw)' }
+    ];
+
+    const triplesMidOuter = [
+      { name: 'F♯3', freq: 185.00, startA: -162, endA: -90,  lblR: 36, lblA: -126, fontSize: 'min(1.8vh, 1.8vw)' },
+      { name: 'A3',  freq: 220.00, startA: -90,  endA: -18,  lblR: 36, lblA: -54,  fontSize: 'min(1.8vh, 1.8vw)' },
+      { name: 'C4',  freq: 261.63, startA: -18,  endA: 54,   lblR: 36, lblA: 18,   fontSize: 'min(1.8vh, 1.8vw)' },
+      { name: 'C3',  freq: 130.81, startA: 54,   endA: 126,  lblR: 36, lblA: 90,   fontSize: 'min(1.8vh, 1.8vw)' },
+      { name: 'E♭3', freq: 155.56, startA: 126,  endA: 198,  lblR: 36, lblA: 162,  fontSize: 'min(1.8vh, 1.8vw)' }
+    ];
+
+    const triplesMidInner = [
+      { name: 'F♯4', freq: 369.99, x: 43, y: 44, w: 19, h: 13, rot: -20, fontSize: 'min(1.2vh, 1.3vw)' },
+      { name: 'A4',  freq: 440.00, x: 58, y: 48, w: 14, h: 11, rot: 90,  fontSize: 'min(1.2vh, 1.3vw)' },
+      { name: 'E♭4', freq: 311.13, x: 48, y: 60, w: 20, h: 14, rot: -5,  fontSize: 'min(1.2vh, 1.3vw)' }
+    ];
+
+    const triplesRightOuter = [
+      { name: 'F3',  freq: 174.61, startA: 144,  endA: 216,  lblR: 36, lblA: 180,  fontSize: 'min(1.8vh, 1.8vw)' },
+      { name: 'A♭3', freq: 207.65, startA: -144, endA: -72,  lblR: 36, lblA: -108, fontSize: 'min(1.8vh, 1.8vw)' },
+      { name: 'B3',  freq: 246.94, startA: -72,  endA: 0,    lblR: 36, lblA: -36,  fontSize: 'min(1.8vh, 1.8vw)' },
+      { name: 'D4',  freq: 293.66, startA: 0,    endA: 72,   lblR: 36, lblA: 36,   fontSize: 'min(1.8vh, 1.8vw)' },
+      { name: 'D3',  freq: 146.83, startA: 72,   endA: 144,  lblR: 36, lblA: 108,  fontSize: 'min(1.8vh, 1.8vw)' }
+    ];
+
+    const triplesRightInner = [
+      { name: 'A♭4', freq: 415.30, x: 57, y: 40, w: 15, h: 11, rot: 20,  fontSize: 'min(1.1vh, 1.2vw)' },
+      { name: 'F4',  freq: 349.23, x: 41, y: 47, w: 14, h: 12, rot: -20, fontSize: 'min(1.1vh, 1.2vw)' },
+      { name: 'B4',  freq: 493.88, x: 50, y: 57, w: 16, h: 11, rot: 10,  fontSize: 'min(1.1vh, 1.2vw)' }
+    ];
+
+    /* 6-Bass Layout Data */
+    const bassPansNotes = [
+      // Pan 1 (Mid Left)
+      [
+        { name: 'E2', freq: 82.41, startA: 120, endA: 240, lblR: 30, lblA: 180 },
+        { name: 'B1', freq: 61.74, startA: 0, endA: 120, lblR: 30, lblA: 60 },
+        { name: 'B2', freq: 123.47, startA: -120, endA: 0, lblR: 30, lblA: -60 }
+      ],
+      // Pan 2 (Top Left)
+      [
+        { name: 'G2', freq: 98.00, startA: -180, endA: -60, lblR: 30, lblA: -120 },
+        { name: 'C3', freq: 130.81, startA: -60, endA: 60, lblR: 30, lblA: 0 },
+        { name: 'C2', freq: 65.41, startA: 60, endA: 180, lblR: 30, lblA: 120 }
+      ],
+      // Pan 3 (Top Right)
+      [
+        { name: 'F♯2', freq: 92.50, startA: -120, endA: 0, lblR: 30, lblA: -60 },
+        { name: 'C♯3', freq: 138.59, startA: 0, endA: 120, lblR: 30, lblA: 60 },
+        { name: 'C♯2', freq: 69.30, startA: 120, endA: 240, lblR: 30, lblA: 180 }
+      ],
+      // Pan 4 (Mid Right) - Rotated CCW so D3/D2 border is horizontal (0 degrees)
+      [
+        { name: 'D2', freq: 73.42, startA: -180, endA: -60, lblR: 30, lblA: -120 },
+        { name: 'A2', freq: 110.00, startA: -60, endA: 60, lblR: 30, lblA: 0 },
+        { name: 'D3', freq: 146.83, startA: 60, endA: 180, lblR: 30, lblA: 120 }
+      ],
+      // Pan 5 (Bottom Left) - Rotated counterclockwise 20 degrees (-20 deg applied to all angles)
+      [
+        { name: 'B♭2', freq: 116.54, startA: -170, endA: -50, lblR: 30, lblA: -110 },
+        { name: 'B♭1', freq: 58.27, startA: -50, endA: 70, lblR: 30, lblA: 10 },
+        { name: 'F2', freq: 87.31, startA: 70, endA: 190, lblR: 30, lblA: 130 }
+      ],
+      // Pan 6 (Bottom Right)
+      [
+        { name: 'E♭2', freq: 77.78, startA: -120, endA: 0, lblR: 30, lblA: -60 },
+        { name: 'A♭2', freq: 103.83, startA: 0, endA: 120, lblR: 30, lblA: 60 },
+        { name: 'E♭3', freq: 155.56, startA: 120, endA: 240, lblR: 30, lblA: 180 }
+      ]
+    ];
+
+    let audioCtx = null;
+    let masterGain = null;
+    let limiter = null;
+    let showOctaves = true;
+    let currentDrumType = 'lead';
+    let currentActiveNotes = [];
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        masterGain = audioCtx.createGain();
+        masterGain.gain.value = 0.35;
+
+        limiter = audioCtx.createDynamicsCompressor();
+        limiter.threshold.setValueAtTime(-3, audioCtx.currentTime);
+        limiter.knee.setValueAtTime(0, audioCtx.currentTime);
+        limiter.ratio.setValueAtTime(20, audioCtx.currentTime);
+        limiter.attack.setValueAtTime(0.001, audioCtx.currentTime);
+        limiter.release.setValueAtTime(0.05, audioCtx.currentTime);
+
+        masterGain.connect(limiter);
+        limiter.connect(audioCtx.destination);
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function playSteelPanTone(freq) {
+      initAudio();
+
+      const now = audioCtx.currentTime;
+
+      const carrier = audioCtx.createOscillator();
+      const carrierGain = audioCtx.createGain();
+      carrier.type = 'sine';
+      carrier.frequency.setValueAtTime(freq, now);
+
+      const overtone = audioCtx.createOscillator();
+      const overtoneGain = audioCtx.createGain();
+      overtone.type = 'sine';
+      overtone.frequency.setValueAtTime(freq * 2.005, now);
+
+      const duration = 1.2;
+
+      carrierGain.gain.setValueAtTime(0, now);
+      carrierGain.gain.linearRampToValueAtTime(0.85, now + 0.004);
+      carrierGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+      overtoneGain.gain.setValueAtTime(0, now);
+      overtoneGain.gain.linearRampToValueAtTime(0.4, now + 0.002);
+      overtoneGain.gain.exponentialRampToValueAtTime(0.001, now + duration * 0.4);
+
+      carrier.connect(carrierGain);
+      overtone.connect(overtoneGain);
+
+      carrierGain.connect(masterGain);
+      overtoneGain.connect(masterGain);
+
+      carrier.start(now);
+      overtone.start(now);
+      carrier.stop(now + duration);
+      overtone.stop(now + duration);
+    }
+
+    function renderLeadPads(container, notesArray) {
+      notesArray.forEach((note, index) => {
+        currentActiveNotes[index] = note;
+
+        const pad = document.createElement('div');
+        pad.className = `note-pad ${note.ring}`;
+        pad.dataset.index = index;
+
+        const label = document.createElement('span');
+        label.className = 'note-label';
+        label.textContent = showOctaves ? note.name : note.name.replace(/\d+/g, '');
+        
+        label.style.transform = `rotate(${-note.rotate}deg)`;
+        pad.appendChild(label);
+
+        const angleRad = (note.angle * Math.PI) / 180;
+        const x = 50 + note.radius * Math.cos(angleRad);
+        const y = 50 + note.radius * Math.sin(angleRad);
+
+        pad.style.left = `${x}%`;
+        pad.style.top = `${y}%`;
+        pad.style.transform = `translate(-50%, -50%) rotate(${note.rotate}deg)`;
+
+        container.appendChild(pad);
+      });
+    }
+
+    function renderDoublesPads(container, notesArray, startIndex) {
+      notesArray.forEach((note, localIdx) => {
+        const globalIdx = startIndex + localIdx;
+        currentActiveNotes[globalIdx] = note;
+
+        const pad = document.createElement('div');
+        pad.className = 'note-pad';
+        pad.dataset.index = globalIdx;
+
+        const label = document.createElement('span');
+        label.className = 'note-label';
+        label.textContent = showOctaves ? note.name : note.name.replace(/\d+/g, '');
+        
+        label.style.transform = `rotate(${-note.rot}deg)`;
+        pad.appendChild(label);
+
+        pad.style.left = `${note.x}%`;
+        pad.style.top = `${note.y}%`;
+        pad.style.width = `${note.w}%`;
+        pad.style.height = `${note.h}%`;
+        pad.style.fontSize = note.fontSize;
+        pad.style.transform = `translate(-50%, -50%) rotate(${note.rot}deg)`;
+
+        container.appendChild(pad);
+      });
+    }
+
+    function polarToCartesian(cx, cy, r, angleInDegrees) {
+      const angleInRadians = (angleInDegrees * Math.PI) / 180.0;
+      return {
+        x: cx + (r * Math.cos(angleInRadians)),
+        y: cy + (r * Math.sin(angleInRadians))
+      };
+    }
+
+    function describePieSector(cx, cy, innerR, outerR, startAngle, endAngle) {
+      const p1 = polarToCartesian(cx, cy, outerR, startAngle);
+      const p2 = polarToCartesian(cx, cy, outerR, endAngle);
+      const p3 = polarToCartesian(cx, cy, innerR, endAngle);
+      const p4 = polarToCartesian(cx, cy, innerR, startAngle);
+
+      const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+
+      return [
+        "M", p1.x, p1.y,
+        "A", outerR, outerR, 0, largeArcFlag, 1, p2.x, p2.y,
+        "L", p3.x, p3.y,
+        "A", innerR, innerR, 0, largeArcFlag, 0, p4.x, p4.y,
+        "Z"
+      ].join(" ");
+    }
+
+    function renderTriplesPads(container, outerNotes, innerNotes, startIndex) {
+      const svgNS = "http://www.w3.org/2000/svg";
+      
+      outerNotes.forEach((note, localIdx) => {
+        const globalIdx = startIndex + localIdx;
+        currentActiveNotes[globalIdx] = note;
+
+        const svg = document.createElementNS(svgNS, "svg");
+        svg.setAttribute("class", "note-slice");
+        svg.setAttribute("viewBox", "0 0 100 100");
+
+        const pathD = describePieSector(50, 50, 24, 49, note.startA, note.endA);
+        const path = document.createElementNS(svgNS, "path");
+        path.setAttribute("d", pathD);
+        path.dataset.index = globalIdx;
+
+        const lblPos = polarToCartesian(50, 50, note.lblR, note.lblA);
+        const text = document.createElementNS(svgNS, "text");
+        text.setAttribute("x", lblPos.x);
+        text.setAttribute("y", lblPos.y);
+        text.setAttribute("text-anchor", "middle");
+        text.setAttribute("dominant-baseline", "central");
+        text.setAttribute("font-size", "7");
+        text.className.baseVal = "note-label";
+        text.textContent = showOctaves ? note.name : note.name.replace(/\d+/g, '');
+
+        svg.appendChild(path);
+        svg.appendChild(text);
+        container.appendChild(svg);
+      });
+
+      const innerStartIdx = startIndex + outerNotes.length;
+      renderDoublesPads(container, innerNotes, innerStartIdx);
+    }
+
+    function renderBassPads(container, notesArray, startIndex) {
+      const svgNS = "http://www.w3.org/2000/svg";
+      
+      notesArray.forEach((note, localIdx) => {
+        const globalIdx = startIndex + localIdx;
+        currentActiveNotes[globalIdx] = note;
+
+        const svg = document.createElementNS(svgNS, "svg");
+        svg.setAttribute("class", "note-slice");
+        svg.setAttribute("viewBox", "0 0 100 100");
+
+        const pathD = describePieSector(50, 50, 5, 48, note.startA, note.endA);
+        const path = document.createElementNS(svgNS, "path");
+        path.setAttribute("d", pathD);
+        path.dataset.index = globalIdx;
+
+        const lblPos = polarToCartesian(50, 50, note.lblR, note.lblA);
+        const text = document.createElementNS(svgNS, "text");
+        text.setAttribute("x", lblPos.x);
+        text.setAttribute("y", lblPos.y);
+        text.setAttribute("text-anchor", "middle");
+        text.setAttribute("dominant-baseline", "central");
+        text.setAttribute("font-size", "10");
+        text.className.baseVal = "note-label";
+        text.textContent = showOctaves ? note.name : note.name.replace(/\d+/g, '');
+
+        svg.appendChild(path);
+        svg.appendChild(text);
+        container.appendChild(svg);
+      });
+    }
+
+    function renderLayout(type) {
+      const stage = document.getElementById('panStage');
+      const title = document.getElementById('drumTitle');
+      const centerLabel = document.getElementById('layoutLabel');
+      
+      stage.innerHTML = '';
+      currentActiveNotes = [];
+      centerLabel.style.display = 'none';
+
+      if (type === 'lead') {
+        title.textContent = 'Lead Steel Pan';
+        stage.className = 'pan-stage single-layout';
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'pan-wrapper';
+        const pan = document.createElement('div');
+        pan.className = 'steel-pan';
+        wrapper.appendChild(pan);
+        stage.appendChild(wrapper);
+
+        renderLeadPads(pan, leadNotes);
+      } else if (type === 'doubles') {
+        title.textContent = 'Double Seconds Steel Pan';
+        stage.className = 'pan-stage dual-layout';
+
+        const wrapperLeft = document.createElement('div');
+        wrapperLeft.className = 'pan-wrapper';
+        const panLeft = document.createElement('div');
+        panLeft.className = 'steel-pan';
+        wrapperLeft.appendChild(panLeft);
+        stage.appendChild(wrapperLeft);
+
+        renderDoublesPads(panLeft, doublesLeftNotes, 0);
+
+        const wrapperRight = document.createElement('div');
+        wrapperRight.className = 'pan-wrapper';
+        const panRight = document.createElement('div');
+        panRight.className = 'steel-pan';
+        wrapperRight.appendChild(panRight);
+        stage.appendChild(wrapperRight);
+
+        renderDoublesPads(panRight, doublesRightNotes, doublesLeftNotes.length);
+      } else if (type === 'triples') {
+        title.textContent = 'Triples Steel Pan';
+        stage.className = 'pan-stage triple-layout';
+
+        const w1 = document.createElement('div');
+        w1.className = 'pan-wrapper';
+        const p1 = document.createElement('div');
+        p1.className = 'steel-pan';
+        w1.appendChild(p1);
+        stage.appendChild(w1);
+        renderTriplesPads(p1, triplesLeftOuter, triplesLeftInner, 0);
+
+        const w2 = document.createElement('div');
+        w2.className = 'pan-wrapper';
+        const p2 = document.createElement('div');
+        p2.className = 'steel-pan';
+        w2.appendChild(p2);
+        stage.appendChild(w2);
+        const idxOffset2 = triplesLeftOuter.length + triplesLeftInner.length;
+        renderTriplesPads(p2, triplesMidOuter, triplesMidInner, idxOffset2);
+
+        const w3 = document.createElement('div');
+        w3.className = 'pan-wrapper';
+        const p3 = document.createElement('div');
+        p3.className = 'steel-pan';
+        w3.appendChild(p3);
+        stage.appendChild(w3);
+        const idxOffset3 = idxOffset2 + triplesMidOuter.length + triplesMidInner.length;
+        renderTriplesPads(p3, triplesRightOuter, triplesRightInner, idxOffset3);
+      } else if (type === 'bass') {
+        title.textContent = '6-Bass Steel Pan';
+        stage.className = 'pan-stage bass-layout';
+        centerLabel.style.display = 'block';
+
+        let noteOffset = 0;
+        bassPansNotes.forEach((panNotes) => {
+          const wrapper = document.createElement('div');
+          wrapper.className = 'pan-wrapper';
+          const pan = document.createElement('div');
+          pan.className = 'steel-pan';
+          wrapper.appendChild(pan);
+          stage.appendChild(wrapper);
+
+          renderBassPads(pan, panNotes, noteOffset);
+          noteOffset += panNotes.length;
+        });
+      }
+    }
+
+    const sidebar = document.getElementById('sidebar');
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    
+    sidebarToggle.addEventListener('click', () => {
+      sidebar.classList.toggle('collapsed');
+    });
+
+    const drumButtons = document.querySelectorAll('.drum-btn');
+    drumButtons.forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        drumButtons.forEach((b) => b.classList.remove('active'));
+        e.target.classList.add('active');
+        
+        currentDrumType = e.target.dataset.drum;
+        renderLayout(currentDrumType);
+      });
+    });
+
+    const toggleOctaves = document.getElementById('toggleOctaves');
+    toggleOctaves.addEventListener('change', (e) => {
+      showOctaves = e.target.checked;
+      const labels = document.querySelectorAll('.note-label');
+      
+      labels.forEach((label) => {
+        const padElement = label.closest('.note-pad') || label.closest('.note-slice');
+        if (!padElement) return;
+        
+        const targetElement = padElement.dataset.index !== undefined ? padElement : padElement.querySelector('path');
+        if (!targetElement) return;
+
+        const padIndex = targetElement.dataset.index;
+        const noteObj = currentActiveNotes[padIndex];
+        if (noteObj) {
+          label.textContent = showOctaves ? noteObj.name : noteObj.name.replace(/\d+/g, '');
+        }
+      });
+    });
+
+    function triggerNote(targetElement) {
+      if (!targetElement) return;
+      const padElement = targetElement.closest('.note-pad') || targetElement.closest('path');
+      if (!padElement) return;
+
+      const padIndex = padElement.dataset.index;
+      const noteData = currentActiveNotes[padIndex];
+      if (noteData) {
+        playSteelPanTone(noteData.freq);
+      }
+
+      padElement.classList.add('active');
+      setTimeout(() => padElement.classList.remove('active'), 140);
+    }
+
+    window.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('#sidebar') || e.target.closest('#sidebarToggle')) return;
+      triggerNote(e.target);
+    });
+
+    renderLayout('lead');
+  </script>
+</body>
+</html>
